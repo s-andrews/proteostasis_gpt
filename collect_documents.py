@@ -21,19 +21,21 @@ def main():
 
 
 
-    with open("proteostasis_gtp_text.txt","wt", encoding="utf8") as out:
+    with open("proteostasis_gpt_text.txt","wt", encoding="utf8") as out:
         pubmed_ids = get_pubmed_ids()
         print("Got",len(pubmed_ids),"pubmed hits")
         pmc_ids = get_pmc_ids(pubmed_ids)
         print("Got",len(pmc_ids),"PMC hits")
-        for id in pmc_ids:
-            print("Getting text from ",id)
+        for i,id in enumerate(pmc_ids):
+            print("Getting text from",id,"(",i+1,"of",len(pmc_ids),")")
             text = get_document_text(id)
             if text is not None:
                 print(text, file=out)
 
 def get_document_text(id):
     url = get_tgz_url(id)
+    if url is None:
+        return None
     file = download_tgz(url)
     text = read_text_from_tgz(file)
     os.unlink(file)
