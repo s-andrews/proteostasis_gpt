@@ -7,26 +7,36 @@ import xml.etree
 import urllib.parse
 import tarfile
 import tempfile
+import os
 
 def main():
 
-    with open("proteostasis_gtp_text.tx","wt", encoding="utf8") as out:
-        text = get_document_text("PMC10609202")
-        print(text, file=out)
-        return
+    ################
+    # TESTING_ONLY #
+    ################
+    # text = get_document_text("PMC10748463")
+    # text = get_document_text("PMC10624868")
+    # breakpoint()
+    # return
 
 
-    pubmed_ids = get_pubmed_ids()
-    print("Got",len(pubmed_ids),"pubmed hits")
-    pmc_ids = get_pmc_ids(pubmed_ids)
-    print("Got",len(pmc_ids),"PMC hits")
-    for id in pmc_ids:
-        get_document_text(id)
+
+    with open("proteostasis_gtp_text.txt","wt", encoding="utf8") as out:
+        pubmed_ids = get_pubmed_ids()
+        print("Got",len(pubmed_ids),"pubmed hits")
+        pmc_ids = get_pmc_ids(pubmed_ids)
+        print("Got",len(pmc_ids),"PMC hits")
+        for id in pmc_ids:
+            print("Getting text from ",id)
+            text = get_document_text(id)
+            if text is not None:
+                print(text, file=out)
 
 def get_document_text(id):
     url = get_tgz_url(id)
     file = download_tgz(url)
     text = read_text_from_tgz(file)
+    os.unlink(file)
 
     return text
 
@@ -65,11 +75,15 @@ def read_text_from_tgz(file):
 
                         else:
                             # This is a paragraph
+                            if part.text is None:
+                                continue
+
                             paragraphs.append(part.text)
 
                             # We now need to add anything beyond the embedded tags in the paragraph
                             for subsequent_tag in part:
-                                paragraphs[-1] += subsequent_tag.tail
+                                if subsequent_tag.tail is not None:
+                                    paragraphs[-1] += subsequent_tag.tail
 
 
     # TODO
@@ -168,14 +182,18 @@ def get_tgz_url(id):
 
     record = xml_doc["OA"]["records"]["record"]
 
-    link = record["link"]
-    if link["@format"] != "tgz":
-        print("Non tgz link for",id)
-        return None
+    links = record["link"]
+    if isinstance(links,dict):
+        links = [links]
 
-    tgz_url = link["@href"].replace("ftp://","https://")
+    for link in links:
+        if link["@format"] == "tgz":
+            tgz_url = link["@href"].replace("ftp://","https://")
+            return tgz_url
 
-    return tgz_url
+    print("No tgz utl for ",id)
+
+    return None
      
 
 if __name__ == "__main__":
